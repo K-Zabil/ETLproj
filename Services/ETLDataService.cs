@@ -1,6 +1,7 @@
 using System.Globalization;
 using CsvHelper;
 using CsvHelper.Configuration;
+using ETLproj.Data;
 using ETLproj.Models;
 
 namespace ETLproj.Services;
@@ -19,16 +20,38 @@ public static class ETLDataService
 
         using (var csv = new CsvReader(reader, config))
         {
+            csv.Context.RegisterClassMap<TripDataMap>();
+
             var records = csv.GetRecords<TripData>().ToList();
 
-            foreach (var record in records) {
-                if(record.store_and_fwd_flag == "Y") record.store_and_fwd_flag = "Yes";
-                else if(record.store_and_fwd_flag == "N") record.store_and_fwd_flag = "No";
-                else record.store_and_fwd_flag = "";
+            foreach (var record in records)
+            {
+                record.Id = Guid.NewGuid();
+                record.StoreAndFwdFlag = record.StoreAndFwdFlag == "Y" ? "Yes" : "No";
             }
 
             return records;
         }
+    }
+
+    public static HashSet<TripData> RemoveInvalidData(HashSet<TripData> records)
+    {
+        var validRecords = new HashSet<TripData>();
+
+        foreach (var record in records)
+            if (TripDataValidator.IsValid(record))
+                validRecords.Add(record);
+
+        var invalids = records.Except(validRecords).ToHashSet();
+        WriteInvalidsToFile(invalids);
+        return validRecords;
+    }
+
+    public static void WriteInvalidsToFile(HashSet<TripData> invalids)
+    {
+        using (var writer = new StreamWriter("Invalids/invalids.csv"))
+        using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
+            csv.WriteRecords(invalids);
     }
 
     public static HashSet<TripData> RemoveDuplicates(List<TripData> records)
@@ -41,10 +64,16 @@ public static class ETLDataService
 
     public static void WriteDuplicatesToFile(List<TripData> duplicates)
     {
-        using (var writer = new StreamWriter("duplicates.csv"))
+        using (var writer = new StreamWriter("Duplicates/duplicates.csv"))
         using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
-        {
             csv.WriteRecords(duplicates);
-        }
+    }
+
+    public static async Task InsertIntoDatabaseAsync(HashSet<TripData> distinctRecords)
+    {
+        if (distinctRecords == null || distinctRecords.Count == 0) return;
+
+        using (var context = new TripDataDContext())
+            await context.BulkInsertTripsAsync(distinctRecords);
     }
 }

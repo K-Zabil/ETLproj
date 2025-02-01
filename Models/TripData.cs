@@ -1,13 +1,14 @@
 namespace ETLproj.Models;
 public record class TripData
 {
-    public DateTime? tpep_pickup_datetime { get; set; }
-    public DateTime? tpep_dropoff_datetime { get; set; }
-    public int? passenger_count { get; set; }
-    public decimal? trip_distance { get; set; }
-    public string? store_and_fwd_flag;
+    public Guid Id { get; set; }
+    public DateTime? PickupDatetime { get; set; }
+    public DateTime? DropoffDatetime { get; set; }
+    public int? PassengerCount { get; set; }
+    public decimal? TripDistance { get; set; }
+    public string? StoreAndFwdFlag { get; set; }
     public int? PULocationID { get; set; }
     public int? DOLocationID { get; set; }
-    public decimal? fare_amount { get; set; }
-    public decimal? tip_amount { get; set; }
-};
+    public decimal? FareAmount { get; set; }
+    public decimal? TipAmount { get; set; }
+}
